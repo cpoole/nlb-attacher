@@ -1,0 +1,78 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ include "api.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "api.name" . }}
+    helm.sh/chart: {{ include "api.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.deployment.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "api.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.deployment.maxUnavailable }}
+      maxSurge: "25%"
+  template:
+    metadata:
+      {{- with .Values.deployment.podAnnotations}}
+      annotations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      labels:
+        app.kubernetes.io/name: {{ include "api.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        helm.sh/chart: {{ include "api.chart" . }}
+    spec:
+      serviceAccountName: {{ include "api.fullname" . }}
+      automountServiceAccountToken: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "api.fullname" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+{{ toYaml .Values.deployment.securityContext | trim | indent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+{{- end }}
+          livenessProbe:
+{{ toYaml .Values.deployment.livenessProbe | trim | indent 12 }}
+          readinessProbe:
+{{ toYaml .Values.deployment.readinessProbe | trim | indent 12 }}
+          env:
+          - name: adminforcereboot
+            value: bar
+          - name: workspace
+            value: {{ .Values.workspace | quote }}
+          - name: environment
+            value: {{ .Values.global.environment | quote }}
+          {{- range $key, $val := .Values.envVars }}
+          - name: {{ $key }}
+            value: {{ $val | quote }}
+          {{- end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+{{- end }}

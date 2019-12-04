@@ -10,7 +10,7 @@ RUN go test ./...
 
 RUN go build
 
-FROM golang:1.13-stretch
+FROM ubuntu:eoan
 
 COPY --from=builder /src/nlb-attacher /nlb-attacher
 

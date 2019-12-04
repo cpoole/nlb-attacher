@@ -88,30 +88,6 @@ func (handler *Handler) TestHandler() {
 	log.Debug("testing")
 }
 
-//TODO: re-add this when implementing "target group total control"
-//func collectTargetGroups(client *kubernetes.Clientset) map[string][]targetGroupPodInfo {
-//	//initial list
-//	podTgMapMutex.Lock()
-//
-//	pods, err := client.CoreV1().Pods("").List(listOptions)
-//	if err != nil {
-//		log.Fatalln("failed to get pods:", err)
-//	}
-//
-//	//key is the target group arn, value is an array of targetGroupPodInfoStructs
-//	targetGroupMap := make(map[string][]targetGroupPodInfo)
-//
-//	// collect initial annotations
-//	for _, pod := range pods.Items {
-//		log.Debug(fmt.Sprintf("collectTargetGroups: inspecting pod - %s\n", pod.GetName()))
-//		targetGroupMap, _ = addPodToMap(pod, targetGroupMap)
-//
-//	}
-//	podTgMapMutex.Unlock()
-//
-//	return targetGroupMap
-//}
-
 func (handler *Handler) getPodTargetGroupAssignments(pod *v1.Pod) []targetGroupPodAssignment {
 	tgAnnotations := make([]targetGroupAnnotation, 0)
 	for annotation, value := range pod.GetAnnotations() {

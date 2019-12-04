@@ -6,13 +6,21 @@ metadata:
     nlb-attacher.bird.co/enabled: "true"
     name: "dummy-pod"
   annotations:
-    ad.datadoghq.com/nginx.logs: '[{"source":"powerline","service":"powerline"}]'
-    #bird.co/nlb/nlb.arn: {{ .Values.deploymentAnnotationLB | quote }}
-    nlb-attacher.bird.co/target-groups: '[{"Arn": "arn:aws:elasticloadbalancing:us-west-2:025420862063:targetgroup/cp-pl/e69b74fd392ae19d", "PortName": "http"}]'
+    nlb-attacher.bird.co/target-groups: |
+      [
+        {
+          "Arn": "arn:aws:elasticloadbalancing:us-west-2:1234567890:targetgroup/nlb-attacher-test/sdfsdfsdf", 
+          "PortName": "http"
+        }
+      ]
 spec:
   containers:
     - name: "dummy"
       image: "ubuntu:bionic"
       command: ["sleep", "infinity"]
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
   terminationGracePeriodSeconds: 40
  

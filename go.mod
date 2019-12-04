@@ -1,11 +1,9 @@
 module github.com/birdrides/nlb-attacher
 
-go 1.12
+go 1.13
 
 require (
 	github.com/aws/aws-sdk-go v1.23.1
-	github.com/bitnami-labs/kubewatch v0.0.4
-	github.com/davecgh/go-spew v1.1.1
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.4.0
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
@@ -17,13 +15,12 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattn/go-isatty v0.0.8 // indirect
 	github.com/sirupsen/logrus v1.4.2
-	github.com/ugorji/go v1.1.7 // indirect
+	github.com/ugorji/go/codec v1.1.7 // indirect
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
-	golang.org/x/tools v0.0.0-20190820205717-547ecf7b1ef1 // indirect
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20190814101207-0772a1bdf941

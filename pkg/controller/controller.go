@@ -2,10 +2,7 @@ package controller
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 	"reflect"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -35,17 +32,17 @@ type Controller struct {
 	eventHandler    handlers.Handler
 	config          config.Config
 	serverStartTime time.Time
+	shutdownChannel chan struct{}
 }
 
 const maxRetries int = 5
 const enableLabelValue string = "nlb-attacher.bird.co/enabled"
 const targetGroupAnnotationKey string = "nlb-attacher.bird.co/target-groups"
 
-// Init - initialize the primary controller
-func (controller *Controller) Init(config *config.Config) {
+func NewController(globalShutdownChan chan struct{}) *Controller {
 	//initialize kubernetes client and api handler
-	controller.clientset = returnK8sClient()
-	api := controller.clientset.CoreV1()
+	clientset := returnK8sClient()
+	api := clientset.CoreV1()
 
 	//generate our set of filtering options
 	//TODO: use namespace option from config to restrict
@@ -66,7 +63,7 @@ func (controller *Controller) Init(config *config.Config) {
 		WatchFunc: watchFunc,
 	}
 
-	controller.informer = cache.NewSharedIndexInformer(
+	informer := cache.NewSharedIndexInformer(
 		&listWatcher,
 		&v1.Pod{},
 		time.Second*60,
@@ -74,19 +71,19 @@ func (controller *Controller) Init(config *config.Config) {
 	)
 
 	//Initialize AWS context by fetching all target groups and ELBS
-	controller.eventHandler = new(aws.Handler)
-	controller.eventHandler.Init(targetGroupAnnotationKey, enableLabelValue)
+	eventHandler := new(aws.Handler)
+	eventHandler.Init(targetGroupAnnotationKey, enableLabelValue)
 
-	controller.configureController() //controller.clientset, controller.eventHandler, informer)
-	stopCh := make(chan struct{})
-	defer close(stopCh)
+	c := &Controller{
+		clientset:       clientset,
+		eventHandler:    eventHandler,
+		informer:        informer,
+		shutdownChannel: globalShutdownChan,
+	}
 
-	go controller.Run(stopCh)
+	c.configureController() //controller.clientset, controller.eventHandler, informer)
 
-	sigterm := make(chan os.Signal, 1)
-	signal.Notify(sigterm, syscall.SIGTERM)
-	signal.Notify(sigterm, syscall.SIGINT)
-	<-sigterm
+	return c
 }
 
 //TODO: better combine/split/refactor this and the Init method
@@ -124,7 +121,7 @@ func (controller *Controller) configureController() {
 }
 
 // Run starts the controller
-func (controller *Controller) Run(stopCh <-chan struct{}) {
+func (controller *Controller) Run() {
 	// don't let panics crash the process
 	defer utilruntime.HandleCrash()
 	// make sure the work queue is shutdown which will trigger workers to end
@@ -133,10 +130,10 @@ func (controller *Controller) Run(stopCh <-chan struct{}) {
 	log.Info("Starting nlb-attacher")
 	controller.serverStartTime = time.Now().Local()
 
-	go controller.informer.Run(stopCh)
+	go controller.informer.Run(controller.shutdownChannel)
 
 	// wait for the caches to synchronize before starting the worker
-	if !cache.WaitForCacheSync(stopCh, controller.HasSynced) {
+	if !cache.WaitForCacheSync(controller.shutdownChannel, controller.HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
 		return
 	}
@@ -145,7 +142,7 @@ func (controller *Controller) Run(stopCh <-chan struct{}) {
 
 	// runWorker will loop until "something bad" happens.  The .Until will
 	// then rekick the worker after one second
-	wait.Until(controller.runWorker, time.Second, stopCh)
+	wait.Until(controller.runWorker, time.Second, controller.shutdownChannel)
 }
 
 // HasSynced is required for the cache.Controller interface.
@@ -175,11 +172,8 @@ func (controller *Controller) processNextItem() bool {
 		return false
 	}
 
-	// you always have to indicate to the queue that you've completed a piece of
-	// work
 	defer controller.queue.Done(newEvent)
 
-	// do your work on the key.
 	err := controller.processItem(newEvent.(event.Event))
 
 	if err == nil {
@@ -194,7 +188,6 @@ func (controller *Controller) processNextItem() bool {
 		log.Errorf("Error processing %s (giving up): %v", newEvent, err)
 		controller.queue.Forget(newEvent)
 		//TODO: calling this sends the main control loop into a stall. investigate why
-		//utilruntime.HandleError(err)
 	}
 
 	return true
@@ -229,11 +222,7 @@ func (controller *Controller) processItem(newEvent event.Event) error {
 		return fmt.Errorf("Returned object is not of type Pod: %v", obj)
 
 	case "update":
-		/* TODOs
-		- enahace update event processing to send statsd alert about what changed.
-		*/
 		if typePod {
-
 			controller.eventHandler.PodUpdated(currPod, currPod)
 			return nil
 		}

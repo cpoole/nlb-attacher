@@ -1,0 +1,40 @@
+global:
+  environment: local
+
+replicaCount: 1
+
+workspace: local-us-west-2
+
+image: "birdrides/nlb-attacher:latest"
+imagePullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+deployment:
+  maxUnavailable: 0
+  maxSurge: 2
+  podAnnotations:
+    iam.amazonaws.com/role: foo-bar
+  livenessProbe:
+    httpGet:
+      path: "/healthcheck"
+      port: http
+    initialDelaySeconds: 20
+    periodSeconds: 15
+    timeoutSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: "/healthcheck"
+      port: http
+    initialDelaySeconds: 20
+    periodSeconds: 15
+    timeoutSeconds: 10
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
